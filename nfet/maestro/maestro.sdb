@@ -35,10 +35,10 @@
 				</note>
 				<vars>
 					<var>vgs
-						<value>570m</value>
+						<value>700m</value>
 					</var>
 					<var>vds
-						<value>570m</value>
+						<value>700m</value>
 					</var>
 				</vars>
 			</test>
@@ -56,7 +56,7 @@
 		</checksasserts>
 		<plottingoptions>
 			<plottingoption>waveformtemplate
-				<value>(None)</value>
+				<value></value>
 			</plottingoption>
 			<plottingoption>plottingmode
 				<value>Replace</value>
@@ -68,7 +68,7 @@
 				<value>no</value>
 			</plottingoption>
 			<plottingoption>useMaestroPlottingTemplate
-				<value>yes</value>
+				<value>no</value>
 			</plottingoption>
 			<plottingoption>allplottingtemplates
 				<value></value>
