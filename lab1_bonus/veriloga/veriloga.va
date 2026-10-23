@@ -1,0 +1,83 @@
+// VerilogA for labs, lab1_bonus, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+// Port order should match the symbol: gnd, in, out
+module lab1_bonus(gnd, in, out);
+    inout gnd;
+    electrical gnd;
+    input in;
+    electrical in;
+    output out;
+    electrical out;
+
+    // Internal nodes: n_u = real-pole output, n_w / n_y = biquad states
+    electrical n_u, n_w, n_y;
+
+    // Op-amp-style limits (plain literal defaults only)
+    parameter real g_clamp = 1.0e5;    // anti-windup clamp stiffness (S)
+    parameter real r_out   = 100.0;    // output resistance (Ohm)
+    parameter real c_in    = 10.0e-15; // input capacitance (F)
+    parameter real i_max   = 100.0e-6; // max output current magnitude (A)
+    parameter real v_min   = -1.0;     // min output voltage (V)
+    parameter real v_max   = 1.0;      // max output voltage (V)
+
+    // Filter specifications
+    parameter real gain_db = 0.0;      // DC gain (dB): match your schematic
+    parameter real f_p1    = 100.0e6;  // real pole (Hz)
+    parameter real f_0     = 100.0e6;  // biquad natural frequency (Hz)
+    parameter real q_factor = 1.4;     // biquad Q
+
+    real gain_lin, tau1, w0;
+    real v_over, v_lin, v_sat, i_out;
+
+    analog begin
+        // Derived constants (plain real variables, not parameters)
+        gain_lin = pow(10.0, gain_db/20.0);
+        tau1     = 1.0 / (2.0 * `M_PI * f_p1);
+        w0       = 2.0 * `M_PI * f_0;
+
+        // Input capacitance to ground
+        I(in, gnd) <+ c_in * ddt(V(in, gnd));
+
+        // Stage 1: real pole.  u + tau1*du/dt = gain * Vin
+        I(n_u) <+ V(n_u) + tau1*ddt(V(n_u)) - gain_lin*V(in, gnd);
+
+        // Stage 2: biquad H(s) = 1 / (1 + s/(w0*Q) + s^2/w0^2)
+        // Normalized states:  (1/w0)*dy/dt = w
+        //                     (1/w0)*dw/dt = u - y - w/Q
+        I(n_y) <+ ddt(V(n_y))/w0 - V(n_w);
+        I(n_w) <+ ddt(V(n_w))/w0 + V(n_w)/q_factor + V(n_y) - V(n_u);
+
+        // Anti-windup: stiff clamps hold the stage-1 and biquad-output
+        // states inside the output rails
+        v_over = 0.0;
+        if (V(n_u) > v_max)      v_over = V(n_u) - v_max;
+        else if (V(n_u) < v_min) v_over = V(n_u) - v_min;
+        I(n_u) <+ g_clamp * v_over;
+
+        v_over = 0.0;
+        if (V(n_y) > v_max)      v_over = V(n_y) - v_max;
+        else if (V(n_y) < v_min) v_over = V(n_y) - v_min;
+        I(n_y) <+ g_clamp * v_over;
+
+        v_lin = V(n_y);
+
+        // Output voltage limiting
+        if (v_lin > v_max)      v_sat = v_max;
+        else if (v_lin < v_min) v_sat = v_min;
+        else                    v_sat = v_lin;
+
+        // Output stage: I(out) <+ x draws x amps OUT of the node,
+        // so the drive term is (V(out) - v_sat)
+        i_out = (V(out, gnd) - v_sat) / r_out;
+
+        // Current limiting
+        if (i_out > i_max)       i_out = i_max;
+        else if (i_out < -i_max) i_out = -i_max;
+
+        I(out, gnd) <+ i_out;
+    end
+
+endmodule

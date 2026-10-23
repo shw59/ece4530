@@ -1,0 +1,69 @@
+// VerilogA for labs, fake_op_amp, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+// Port order matches the symbol/schematic: in_pos, in_neg, out
+module fake_op_amp(in_pos, in_neg, out);
+    input in_pos;
+    electrical in_pos;
+    input in_neg;
+    electrical in_neg;
+    output out;
+    electrical out;
+
+    electrical n_pole;   // internal node holding the single-pole response
+
+    // Model specifications (plain literal defaults only)
+    parameter real gain_db = 60.0;     // DC gain (dB)
+    parameter real ugbw    = 10.0e9;   // Unity-gain bandwidth (Hz)
+    parameter real v_max   = 1.0;      // Max output voltage (V)
+    parameter real v_min   = -1.0;     // Min output voltage (V)
+    parameter real i_max   = 100.0e-6; // Max output current magnitude (A)
+    parameter real c_in    = 10.0e-15; // Differential input capacitance (F)
+    parameter real r_out   = 100.0;    // Output resistance (Ohm), modeling choice
+	parameter real g_clamp = 1.0e5;   // clamp stiffness (S)
+
+    real gain_lin, f_pole, tau;
+    real v_over, v_linear, v_sat, i_out;
+
+    analog begin
+        // Derived constants
+        gain_lin = pow(10.0, gain_db/20.0);          // 1000
+        f_pole   = ugbw / gain_lin;                  // 10 MHz
+        tau      = 1.0 / (2.0 * `M_PI * f_pole);
+
+        // Input capacitance (differential)
+        I(in_pos, in_neg) <+ c_in * ddt(V(in_pos, in_neg));
+
+        // Single-pole gain stage: tau*dV/dt + V = gain*Vin
+        // i.e. H(s) = gain_lin / (1 + s*tau)
+		// Pole node written as a current balance (R = 1 ohm, C = tau):
+		//   tau*dV/dt + V = gain*Vin
+		I(n_pole) <+ V(n_pole) + tau*ddt(V(n_pole)) - gain_lin*V(in_pos, in_neg);
+
+		// Anti-windup: stiff clamp pulls the pole state back to +/- v_max
+		v_over = 0.0;
+		if (V(n_pole) > v_max)      v_over = V(n_pole) - v_max;
+		else if (V(n_pole) < v_min) v_over = V(n_pole) - v_min;
+		I(n_pole) <+ g_clamp * v_over;
+
+		v_linear = V(n_pole);
+
+        // Output voltage limiting
+        if (v_linear > v_max)      v_sat = v_max;
+        else if (v_linear < v_min) v_sat = v_min;
+        else                       v_sat = v_linear;
+
+        // Output stage: I(out) <+ x draws x amps out of the node,
+        // so the drive term is (V(out) - v_sat)
+        i_out = (V(out) - v_sat) / r_out;
+
+        // Current limiting
+        if (i_out > i_max)       i_out = i_max;
+        else if (i_out < -i_max) i_out = -i_max;
+
+        I(out) <+ i_out;
+    end
+
+endmodule

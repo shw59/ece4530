@@ -34,10 +34,3 @@ thumbnail_*.png
 *.drc.results
 *.lvs.report
 svdb/
-
-# --- Lab 1 Stuff ---
-lab1_*/
-fake_op_amp/
-op_amp_testbench/
-bonus_testbench/
-lab1.Cat
