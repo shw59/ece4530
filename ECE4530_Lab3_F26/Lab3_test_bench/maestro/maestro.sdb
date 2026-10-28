@@ -38,10 +38,10 @@
 						<value>1</value>
 					</var>
 					<var>F1
-						<value>100k</value>
+						<value>1M</value>
 					</var>
 					<var>F2
-						<value>500M</value>
+						<value>50M</value>
 					</var>
 					<var>Vbias
 						<value>1.25</value>
