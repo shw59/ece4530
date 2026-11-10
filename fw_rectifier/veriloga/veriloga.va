@@ -1,0 +1,44 @@
+// VerilogA for labs, fw_rectifier, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module sw_abs_rect(in, vcm, out, vdd, gnd);
+  inout in, vcm, out, vdd, gnd;
+  electrical in, vcm, out, vdd, gnd;
+
+  parameter real gain_pos = 1.0;   // gain of the straight path
+  parameter real gain_neg = 1.0;   // gain of the inverting path (mismatch vs gain_pos)
+  parameter real vos      = 0.0;   // comparator input offset (V)
+  parameter real hyst     = 0.0;   // comparator hysteresis, total width (V)
+  parameter real tdel     = 0.0;   // comparator delay (s)
+  parameter real ttran    = 1e-9;  // select-signal transition time (s)
+  parameter real fbw      = 1e6;   // bandwidth of the signal path (Hz)
+  parameter real vmargin  = 0.0;   // how close the output can get to either rail (V)
+
+  real sel;    // +1 = straight path, -1 = inverting path
+  real s;      // delayed, smoothed select
+  real g;      // effective path gain
+  real vo;     // unclipped output, measured from gnd
+
+  analog begin
+    // comparator with offset and hysteresis, deciding on V(in) relative to Vcm
+    @(initial_step) sel = (V(in, vcm) > vos) ? 1.0 : -1.0;
+    @(cross(V(in, vcm) - (vos + hyst/2), +1)) sel = 1.0;
+    @(cross(V(in, vcm) - (vos - hyst/2), -1)) sel = -1.0;
+
+    // delay and finite switching speed
+    s = transition(sel, tdel, ttran);
+
+    // blend between the two paths: s=+1 -> +gain_pos, s=-1 -> -gain_neg
+    g = ((1.0 + s)/2.0) * gain_pos - ((1.0 - s)/2.0) * gain_neg;
+
+    // output = Vcm + g * (Vin - Vcm), with a one-pole bandwidth limit
+    // vo = V(vcm, gnd) + laplace_nd(g * V(in, vcm), {1.0}, {1.0, 1.0/(2.0*`M_PI*fbw)});
+	vo = V(vcm, gnd) + (g * V(in, vcm));
+
+    // the output cannot leave the supply rails
+    V(out, gnd) <+ min(max(vo, vmargin), V(vdd, gnd) - vmargin);
+  end
+endmodule
+
