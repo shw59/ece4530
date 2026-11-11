@@ -43,9 +43,6 @@
 					<var>Vbias
 						<value>1.25</value>
 					</var>
-					<var>L
-						<value>2u</value>
-					</var>
 					<var>I_AC
 						<value>0</value>
 					</var>
@@ -53,10 +50,13 @@
 						<value>0</value>
 					</var>
 					<var>A_MAG
-						<value>0</value>
+						<value>1</value>
+					</var>
+					<var>L
+						<value>2u</value>
 					</var>
 					<var>amp_in
-						<value>0</value>
+						<value>1u</value>
 					</var>
 				</vars>
 			</test>
@@ -86,7 +86,7 @@
 				<value>no</value>
 			</plottingoption>
 			<plottingoption>useMaestroPlottingTemplate
-				<value>yes</value>
+				<value>no</value>
 			</plottingoption>
 			<plottingoption>allplottingtemplates
 				<value></value>
