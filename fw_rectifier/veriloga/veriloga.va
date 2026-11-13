@@ -27,6 +27,9 @@ module sw_abs_rect(in, vcm, out, vdd, gnd);
     @(cross(V(in, vcm) - (vos + hyst/2), +1)) sel = 1.0;
     @(cross(V(in, vcm) - (vos - hyst/2), -1)) sel = -1.0;
 
+	if (V(in, vcm) > vos + hyst/2) sel = 1.0;
+	else if (V(in, vcm) < vos - hyst/2) sel = -1.0;
+
     // delay and finite switching speed
     s = transition(sel, tdel, ttran);
 
@@ -34,8 +37,8 @@ module sw_abs_rect(in, vcm, out, vdd, gnd);
     g = ((1.0 + s)/2.0) * gain_pos - ((1.0 - s)/2.0) * gain_neg;
 
     // output = Vcm + g * (Vin - Vcm), with a one-pole bandwidth limit
-    // vo = V(vcm, gnd) + laplace_nd(g * V(in, vcm), {1.0}, {1.0, 1.0/(2.0*`M_PI*fbw)});
-	vo = V(vcm, gnd) + (g * V(in, vcm));
+    vo = V(vcm, gnd) + laplace_nd(g * V(in, vcm), {1.0}, {1.0, 1.0/(2.0*`M_PI*fbw)});
+	// vo = V(vcm, gnd) + (g * V(in, vcm));
 
     // the output cannot leave the supply rails
     V(out, gnd) <+ min(max(vo, vmargin), V(vdd, gnd) - vmargin);

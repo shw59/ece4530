@@ -1,0 +1,32 @@
+// VerilogA for labs, log_amp, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module log_det(in, vcm, out, vdd, gnd);
+  inout in, vcm, out, vdd, gnd;
+  electrical in, vcm, out, vdd, gnd;
+
+  parameter real    slope   = 0.078;   // V per decade at tnom
+  parameter real    vref_in = 0.04;    // level (V above Vcm) where the offset v0 applies
+  parameter real    v0      = 0.3;     // offset from Vcm at vref_in (V)
+  parameter integer pol     = -1;      // -1 = output falls with level, +1 = rises
+  parameter real    vos     = 0.0;     // input-referred offset (V)
+  parameter real    vmin    = 1m;      // floor so log() never sees 0 or negative
+  parameter real    tnom    = 27.0;    // temperature where slope is specified (C)
+  parameter real    fbw     = 1M;      // small-signal bandwidth (Hz)
+  parameter real    vmargin = 0.0;     // how close the output can get to either rail (V)
+
+  real lvl, sl, dec, vo;
+
+  analog begin
+    lvl = max(V(in, vcm) + vos, vmin);
+    sl  = slope * $temperature / (tnom + 273.15);
+    dec = sl * log(lvl / vref_in);
+
+    vo = V(vcm, gnd) + pol * (v0 + laplace_nd(dec, {1.0}, {1.0, 1.0/(2.0*`M_PI*fbw)}));
+
+    // the output cannot leave the supply rails
+    V(out, gnd) <+ min(max(vo, vmargin), V(vdd, gnd) - vmargin);
+  end
+endmodule

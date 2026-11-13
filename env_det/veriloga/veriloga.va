@@ -1,0 +1,39 @@
+// VerilogA for labs, env_det, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module env_det(in, vcm, out, vdd, gnd);
+  inout in, vcm, out, vdd, gnd;
+  electrical in, vcm, out, vdd, gnd;
+
+  parameter real    cpk      = 100p;   // hold capacitor (F)
+  parameter real    tau_att  = 0.1u;    // charge time constant (s)
+  parameter integer rel_mode = 1;      // 0 = resistor, 1 = constant-current sink
+  parameter real    i_sink   = 4n;     // sink current for rel_mode = 1 (A)
+  parameter real    tau_rel  = 5m;     // release time constant for rel_mode = 0 (s)
+  parameter real    vsm      = 10m;    // smoothing so the sink shuts off near 0 V
+  parameter real    eps      = 100n;   // smoothing for the one-way charge
+  parameter real    vmargin  = 0.0;    // how close the peak can get to vdd (V)
+
+  real target, x, xp, i_ch, i_rel;
+
+  analog begin
+    // input as seen by the detector, limited by the supply
+    target = min(V(in, gnd), V(vdd, gnd) - vmargin);
+
+    // one-way charging: only when the input is above the held value
+    x    = target - V(out, gnd);
+    xp   = 0.5 * (x + sqrt(x*x + eps*eps));
+    i_ch = cpk * xp / tau_att;
+
+    // slow release toward Vcm
+    if (rel_mode == 0)
+      i_rel = cpk * V(out, vcm) / tau_rel;
+    else
+      i_rel = i_sink * tanh(V(out, vcm) / vsm);
+
+    // KCL on the hold node: C*dV/dt = charge current - release current
+    I(out, vcm) <+ cpk * ddt(V(out, vcm)) + i_rel - i_ch;
+  end
+endmodule

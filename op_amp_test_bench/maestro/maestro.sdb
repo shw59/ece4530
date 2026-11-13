@@ -56,7 +56,7 @@
 						<value>2u</value>
 					</var>
 					<var>amp_in
-						<value>1u</value>
+						<value>10u:10u:300u</value>
 					</var>
 				</vars>
 			</test>
